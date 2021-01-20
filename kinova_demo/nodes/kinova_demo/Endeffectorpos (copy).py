@@ -11,10 +11,11 @@ import actionlib
 import kinova_msgs.msg
 import std_msgs.msg
 import geometry_msgs.msg
-
-
+import sensor_msgs.msg
 import math
 import argparse
+
+from kinova_msgs.srv import *
 
 """ Global variable """
 arm_joint_number = 0
@@ -23,22 +24,34 @@ prefix = 'NO_ROBOT_TYPE_DEFINED_'
 finger_maxDist = 18.9/2/1000  # max distance for one finger
 finger_maxTurn = 6800  # max thread rotation for one finger
 currentCartesianCommand = [0.212322831154, -0.257197618484, 0.509646713734, 1.63771402836, 1.11316478252, 0.134094119072] # default home in unit mq
+joy=sensor_msgs.msg.Joy()
+pump=std_msgs.msg.Int32()
+pumppwm=0
+armflag=0
+prestate=0
+armhomeflag=0
+armhomeprestate=0
+armhome=0
+vel1 = kinova_msgs.msg.PoseVelocity()
+vel2 = kinova_msgs.msg.PoseVelocity()
 
 
 def cartesian_pose_client(position, orientation):
     """Send a cartesian goal to the action server."""
-    action_address = '/' + prefix + 'driver/pose_action/tool_pose'
+    action_address = '/' + 'm1n4s300_' + 'driver/pose_action/tool_pose'
     client = actionlib.SimpleActionClient(action_address, kinova_msgs.msg.ArmPoseAction)
     client.wait_for_server()
 
     goal = kinova_msgs.msg.ArmPoseGoal()
-    goal.pose.header = std_msgs.msg.Header(frame_id=(prefix + 'link_base'))
+    goal.pose.header = std_msgs.msg.Header(frame_id=('m1n4s300_' + 'link_base'))
     goal.pose.pose.position = geometry_msgs.msg.Point(
         x=position[0], y=position[1], z=position[2])
     goal.pose.pose.orientation = geometry_msgs.msg.Quaternion(
         x=orientation[0], y=orientation[1], z=orientation[2], w=orientation[3])
 
-    # print('goal.pose in client 1: {}'.format(goal.pose.pose)) # debug
+     #print(x)
+
+
 
     client.send_goal(goal)
 
@@ -73,6 +86,8 @@ def Quaternion2EulerXYZ(Q_raw):
     tz_ = math.atan2((2 * qw_ * qz_ - 2 * qx_ * qy_), (qw_ * qw_ + qx_ * qx_ - qy_ * qy_ - qz_ * qz_))
     EulerXYZ_ = [tx_,ty_,tz_]
     return EulerXYZ_
+
+
 
 
 def EulerXYZ2Quaternion(EulerXYZ_):
@@ -220,41 +235,58 @@ def verboseParser(verbose, pose_mq_):
         print('Cartesian orientation in Euler-XYZ(radian) is: ')
         print('tx {:0.3f}, ty {:0.3f}, tz {:0.3f}'.format(orientation_rad[0], orientation_rad[1], orientation_rad[2]))
         print('Cartesian orientation in Euler-XYZ(degree) is: ')
-        print('tx {:3.1f}, ty {:3.1f}, tz {:3.1f}'.format(orientation_deg[0], orientation_deg[1], orientation_deg[2]))
+        print('tx {:3.1f}, ty {:3.1f}, tz {:3.1f}'.format(orisensor_msgs.msg.Joyentation_deg[0], orientation_deg[1], orientation_deg[2]))
+
+
+def callback(event):
+    global pump
+    global armhomeflag
+    global armhomeprestate
+    global armflag
+    global prestate
+    global armhome
+    joy=event
+    armhomeflag=joy.buttons[5]
+    pump.data=100*joy.axes[5]
+    flag=joy.buttons[7]
+
+    if (flag==1 and prestate==0):
+        armflag= not(armflag)
+    prestate=flag
+ 
+    if (armhomeflag==1 and armhomeprestate==0):
+        armhome= not(armhome)
+    armhomeprestate=armhomeflag
+
+   
 
 
 if __name__ == '__main__':
-
-    args = argumentParser(None)
-
-    kinova_robotTypeParser(args.kinova_robotType)
-    rospy.init_node(prefix + 'pose_action_client')
-
-    if args.unit == 'mq':
-        if len(args.pose_value) != 7:
-            print('Number of input values {} is not equal to 7 (3 position + 4 Quaternion).'.format(len(args.pose_value)))
-            sys.exit(0)
-    elif (args.unit == 'mrad') | (args.unit == 'mdeg'):
-        if len(args.pose_value) != 6:
-            print('Number of input values {} is not equal to 6(3 position + 3 EulerAngles).'.format(len(args.pose_value)))
-            sys.exit(0)
-    else:
-        raise Exception('Cartesian value have to be in unit: mq, mdeg or mrad')
-
-    getcurrentCartesianCommand(prefix)
-
-    pose_mq, pose_mdeg, pose_mrad = unitParser(args.unit, args.pose_value, args.relative)
+   
+    pub = rospy.Publisher('m1n4s300_driver/in/cartesian_velocity',kinova_msgs.msg.PoseVelocity, queue_size=10)
+    pub1 = rospy.Publisher('Pump_control',std_msgs.msg.Int32, queue_size=10) 
+    rospy.Subscriber("joy_teleop/joy", sensor_msgs.msg.Joy, callback)
+    rospy.init_node('pose_action_client')
+    rospy.wait_for_service('/m1n4s300_driver/in/home_arm')
+    arm_homing=rospy.ServiceProxy('/m1n4s300_driver/in/home_arm', HomeArm)
 
     try:
+ 
+           arm_homing()
+           #cartesian_pose_client(np.array([-0.01, -0.2560, 0.5348]), np.array([0,0,+0.5106,0.8597]))
+           cartesian_pose_client(np.array([0, -0.12, 0.5]), np.array([0,0,+0.5106,0.8597]))
+           while not rospy.is_shutdown(): 
+                   
 
-        poses = [float(n) for n in pose_mq]
-
-        result = cartesian_pose_client(poses[:3], poses[3:])
-
-        print('Cartesian pose sent!')
-
+                        if (armflag==1):
+                          cartesian_pose_client(np.array([0, -0.40,0.60]), np.array([0,0,+0.5106,0.8597]))
+                        if (armflag==1):
+                          cartesian_pose_client(np.array([0, -0.40,0.45]), np.array([0,0,+0.5106,0.8597]))
+                        if (armhome==1):
+                          cartesian_pose_client(np.array([0, -0.12, 0.5]), np.array([0,0,+0.5106,0.8597]))
+                          armhome=0
+                          armflag=0
     except rospy.ROSInterruptException:
-        print "program interrupted before completion"
+        pass
 
 
-    verboseParser(args.verbose, poses)

@@ -23,22 +23,25 @@ prefix = 'NO_ROBOT_TYPE_DEFINED_'
 finger_maxDist = 18.9/2/1000  # max distance for one finger
 finger_maxTurn = 6800  # max thread rotation for one finger
 currentCartesianCommand = [0.212322831154, -0.257197618484, 0.509646713734, 1.63771402836, 1.11316478252, 0.134094119072] # default home in unit mq
-
+vel1 = kinova_msgs.msg.PoseVelocity()
+vel2 = kinova_msgs.msg.PoseVelocity()
 
 def cartesian_pose_client(position, orientation):
     """Send a cartesian goal to the action server."""
-    action_address = '/' + prefix + 'driver/pose_action/tool_pose'
+    action_address = '/' + 'm1n4s300_' + 'driver/pose_action/tool_pose'
     client = actionlib.SimpleActionClient(action_address, kinova_msgs.msg.ArmPoseAction)
     client.wait_for_server()
 
     goal = kinova_msgs.msg.ArmPoseGoal()
-    goal.pose.header = std_msgs.msg.Header(frame_id=(prefix + 'link_base'))
+    goal.pose.header = std_msgs.msg.Header(frame_id=('m1n4s300_' + 'link_base'))
     goal.pose.pose.position = geometry_msgs.msg.Point(
         x=position[0], y=position[1], z=position[2])
     goal.pose.pose.orientation = geometry_msgs.msg.Quaternion(
         x=orientation[0], y=orientation[1], z=orientation[2], w=orientation[3])
 
-    # print('goal.pose in client 1: {}'.format(goal.pose.pose)) # debug
+     #print(x)
+
+
 
     client.send_goal(goal)
 
@@ -73,6 +76,8 @@ def Quaternion2EulerXYZ(Q_raw):
     tz_ = math.atan2((2 * qw_ * qz_ - 2 * qx_ * qy_), (qw_ * qw_ + qx_ * qx_ - qy_ * qy_ - qz_ * qz_))
     EulerXYZ_ = [tx_,ty_,tz_]
     return EulerXYZ_
+
+
 
 
 def EulerXYZ2Quaternion(EulerXYZ_):
@@ -224,37 +229,41 @@ def verboseParser(verbose, pose_mq_):
 
 
 if __name__ == '__main__':
+   
+    pub = rospy.Publisher('m1n4s300_driver/in/cartesian_velocity',kinova_msgs.msg.PoseVelocity, queue_size=10)
+    rospy.init_node('pose_action_client')
+    vel1.twist_linear_x=0
+    vel1.twist_linear_y=0
+    vel1.twist_linear_z=1
+    vel1.twist_angular_x=0
+    vel1.twist_angular_y=0
+    vel1.twist_angular_z=0
+    vel1.twist_linear_x=0
 
-    args = argumentParser(None)
+    vel2.twist_linear_x=0
+    vel2.twist_linear_y=0
+    vel2.twist_linear_z=-1
+    vel2.twist_angular_x=0
+    vel2.twist_angular_y=0
+    vel2.twist_angular_z=0
+    vel2.twist_linear_x=0
 
-    kinova_robotTypeParser(args.kinova_robotType)
-    rospy.init_node(prefix + 'pose_action_client')
-
-    if args.unit == 'mq':
-        if len(args.pose_value) != 7:
-            print('Number of input values {} is not equal to 7 (3 position + 4 Quaternion).'.format(len(args.pose_value)))
-            sys.exit(0)
-    elif (args.unit == 'mrad') | (args.unit == 'mdeg'):
-        if len(args.pose_value) != 6:
-            print('Number of input values {} is not equal to 6(3 position + 3 EulerAngles).'.format(len(args.pose_value)))
-            sys.exit(0)
-    else:
-        raise Exception('Cartesian value have to be in unit: mq, mdeg or mrad')
-
-    getcurrentCartesianCommand(prefix)
-
-    pose_mq, pose_mdeg, pose_mrad = unitParser(args.unit, args.pose_value, args.relative)
 
     try:
+           cartesian_pose_client(np.array([-0.015, -0.35,0.4]), np.array([0,0,1,0]))
+           i=0
+           j=0
 
-        poses = [float(n) for n in pose_mq]
-
-        result = cartesian_pose_client(poses[:3], poses[3:])
-
-        print('Cartesian pose sent!')
+           while not rospy.is_shutdown():
+              for i in range (0, 40000):
+                pub.publish(vel1)
+              for j in range (0, 40000):
+                pub.publish(vel2)
+              i=0
+              j=0 
+              cartesian_pose_client(np.array([-0.015, -0.35,0.4]), np.array([0,0,1,0]))
 
     except rospy.ROSInterruptException:
-        print "program interrupted before completion"
+        pass
 
 
-    verboseParser(args.verbose, poses)

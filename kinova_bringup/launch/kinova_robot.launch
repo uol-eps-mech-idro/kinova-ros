@@ -1,10 +1,11 @@
 <launch>
 
   <arg name="use_urdf" default="true"/>
-  <arg name="kinova_robotType" default="j2n6s300" />
+  <arg name="kinova_robotType" default="m1n4s300" />
   <arg name="kinova_robotName" default="$(arg kinova_robotType)"/>
 	<arg name="kinova_robotSerial" default="not_set" />
 	<arg name="use_jaco_v1_fingers" default="false" />
+	<arg name="feedback_publish_rate" default="0.1" />
 
   <!-- If the node handles multiple robots uncomment this and configure /config/multiple_robots.yaml" -->
 	<rosparam file="$(find kinova_bringup)/launch/config/multiple_robots.yaml" command="load" />
@@ -15,8 +16,20 @@
     <param name="robot_name" value="$(arg kinova_robotName)" />   
     <param name="robot_type" value="$(arg kinova_robotType)" />   
     <param name="use_jaco_v1_fingers" value="$(arg use_jaco_v1_fingers)" />   
+    <param name="status_interval_seconds" value="$(arg feedback_publish_rate)" />
   </node>
     
+
+  <node name="kinova_control" pkg="kinova_demo" type="Endeffectorpos.py" output="screen">
+ </node>
+
+
+  <node pkg="rosserial_python" type="serial_node.py" name="serial_node">
+    <param name="port" value="/dev/ttyACM0"/>
+    <param name="baud" value="57600"/>
+  </node>
+
+
   <group unless="$(arg use_urdf)">
     <node name="$(arg kinova_robotName)_tf_updater" pkg="kinova_driver" type="kinova_tf_updater" output="screen" cwd="node" args="$(arg kinova_robotType)">
       <remap from="/$(arg kinova_robotName)_tf_updater/in/joint_angles" to="/$(arg kinova_robotName)_driver/out/joint_angles"/>

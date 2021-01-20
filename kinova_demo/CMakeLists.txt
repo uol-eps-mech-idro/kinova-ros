@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   roscpp
   rospy
+  message_generation
 )
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -18,6 +19,16 @@ find_package(catkin REQUIRED COMPONENTS
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
 catkin_python_setup()
 
+add_service_files(
+  FILES
+  Endeffectorpos.srv
+  Endeffectorpos_Kill.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -25,7 +36,7 @@ catkin_python_setup()
 ## Declare things to be passed to dependent projects
 ## INCLUDE_DIRS: uncomment this if you package contains header files
 ## LIBRARIES: libraries you create in this project that dependent projects also need
-## CATKIN_DEPENDS: catkin_packages dependent projects also need
+## CATKIN_DEPENDS: catkin_packages dependent pmessage_generationrojects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
@@ -60,3 +71,5 @@ install(PROGRAMS
   nodes/kinova_demo/run_COMParameters_estimation.py	
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+

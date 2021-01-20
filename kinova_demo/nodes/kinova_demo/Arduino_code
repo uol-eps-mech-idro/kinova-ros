@@ -1,0 +1,48 @@
+/* 
+ * rosserial Subscriber Example
+ * Blinks an LED on callback
+ */
+
+#include <ros.h>
+#include <sensor_msgs/Joy.h>
+#include <std_msgs/Int32.h>
+#include <Servo.h>
+
+Servo myservo;
+ros::NodeHandle  nh;
+int b;
+int c;
+
+void messageCb( const sensor_msgs::Joy& Pump_control){
+  float a;
+  a=Pump_control.axes[3];
+  a= a*175.0;
+  b=(unsigned int)a;
+}
+
+
+void autoCb( const std_msgs::Int32& inp){
+  float a;
+  a=inp.data;
+  c=(unsigned int)a;
+}
+
+ros::Subscriber<sensor_msgs::Joy> sub1 ("joy_teleop/joy", &messageCb);
+ros::Subscriber<std_msgs::Int32> sub ("Pump_auto", &autoCb);
+
+
+void setup()
+{ 
+  nh.initNode();
+  nh.subscribe(sub);
+  nh.subscribe(sub1);
+  myservo.attach(10);  // attaches the servo on pin 9 to the servo object
+  myservo.write(0);
+  delay(1000);
+}
+void loop()
+{  
+  nh.spinOnce();
+  myservo.write(b+c);
+  delay(1);
+}
